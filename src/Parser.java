@@ -7,68 +7,70 @@ public class Parser {
 
     public Parser(Lexer lexer) {
         this.lexer = lexer;
-        this.currentToken = lexer.nextToken();
+        currentToken = lexer.nextToken(); 
     }
 
-    private void consume(Token.Type type) {
-        if (currentToken.type == type) {
+    private void consume(Token.Type expectedType) { 
+        if (currentToken.type == expectedType) {
             currentToken = lexer.nextToken();
         } else {
             throw new RuntimeException(
-                "Syntax Error: Expected " + type + " but found " + currentToken.type
+                "Syntax Error: Expected " + expectedType + " but found " + currentToken.type
             );
         }
     }
 
     public ASTNode parse() {
-        List<ASTNode> statements = new ArrayList<>();
+        List<ASTNode> stmtList = new ArrayList<>(); 
 
         while (currentToken.type != Token.Type.EOF) {
-            statements.add(statement());
+            stmtList.add(statement());
         }
 
-        return new BlockNode(statements);
+        return new BlockNode(stmtList);
     }
 
     private ASTNode statement() {
-        String name = currentToken.value;
+        String varName = currentToken.value; 
         consume(Token.Type.IDENTIFIER);
         consume(Token.Type.ASSIGN);
-        return new AssignNode(name, expression());
+
+        ASTNode expr = expression(); 
+        return new AssignNode(varName, expr);
     }
 
     private ASTNode expression() {
-        ASTNode node = term();
+        ASTNode result = term(); 
 
         while (currentToken.type == Token.Type.PLUS) {
             consume(Token.Type.PLUS);
-            node = new BinaryOpNode(node, '+', term());
+            result = new BinaryOpNode(result, '+', term());
         }
 
-        return node;
+        return result;
     }
 
     private ASTNode term() {
-        ASTNode node = factor();
+        ASTNode result = factor(); 
 
         while (currentToken.type == Token.Type.MULTIPLY) {
             consume(Token.Type.MULTIPLY);
-            node = new BinaryOpNode(node, '*', factor());
+            result = new BinaryOpNode(result, '*', factor());
         }
 
-        return node;
+        return result;
     }
 
     private ASTNode factor() {
         if (currentToken.type == Token.Type.NUMBER) {
-            String val = currentToken.value;
+            String numberValue = currentToken.value; 
             consume(Token.Type.NUMBER);
-            return new NumberNode(val);
-        }
+            return new NumberNode(numberValue);
+        } 
         else if (currentToken.type == Token.Type.IDENTIFIER) {
-            String name = currentToken.value;
+            String varName = currentToken.value; 
             consume(Token.Type.IDENTIFIER);
-            return new VariableNode(name);
+            return new VariableNode(varName);
         }
 
         throw new RuntimeException("Unexpected token: " + currentToken.type);
