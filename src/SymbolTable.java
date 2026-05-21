@@ -2,6 +2,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class SymbolTable {
+
     private final Map<String, String> table = new HashMap<>();
 
     public void set(String name, String type) {
@@ -20,13 +21,19 @@ public class SymbolTable {
     }
 
     public void display() {
-        System.out.println("\n--- Symbol Table ---");
+        System.out.println();
+        System.out.println("=== Symbol Table ===");
+
         if (table.isEmpty()) {
             System.out.println("Empty");
         } else {
-            table.forEach((k, v) ->
-                    System.out.println("Variable: " + k + " | Type: " + v));
+            for (Map.Entry<String, String> entry : table.entrySet()) {
+                String k = entry.getKey();
+                String v = entry.getValue();
+                System.out.println("Variable -> " + k + " | Type -> " + v);
+            }
         }
-        System.out.println("--------------------");
+
+        System.out.println("====================");
     }
 }
