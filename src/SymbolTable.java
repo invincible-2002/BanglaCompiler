@@ -31,16 +31,13 @@ public class SymbolTable {
         if (table.isEmpty()) {
             System.out.println("  (empty)");
         } else {
-<<<<<<< HEAD
             table.forEach((k, v) ->
                 System.out.printf("  %-20s | Type: %s%n", k, v));
-=======
             for (Map.Entry<String, String> entry : table.entrySet()) {
                 String k = entry.getKey();
                 String v = entry.getValue();
                 System.out.println("Variable -> " + k + " | Type -> " + v);
             }
->>>>>>> cac187d8c579f2005d9a5234af50696a503a00df
         }
 
         System.out.println("====================");
