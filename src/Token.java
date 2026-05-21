@@ -1,5 +1,7 @@
 public class Token {
+
     public enum Type {
+<<<<<<< HEAD
         // Literals
         IDENTIFIER, NUMBER, STRING,
 
@@ -36,17 +38,38 @@ public class Token {
         // Special
         EOF,
         UNKNOWN
+=======
+        IDENTIFIER,
+        NUMBER,
+        ASSIGN,
+        PLUS,
+        MULTIPLY,
+        EOF
+>>>>>>> cac187d8c579f2005d9a5234af50696a503a00df
     }
 
     public final Type type;
     public final String value;
 
+    // Constructor
     public Token(Type type, String value) {
         this.type = type;
         this.value = value;
     }
 
+    // Convert token to string representation
+    @Override
     public String toString() {
+<<<<<<< HEAD
         return "Token(" + type + ", \"" + value + "\")";
+=======
+        StringBuilder result = new StringBuilder();
+        result.append("Token(")
+              .append(type)
+              .append(", ")
+              .append(value)
+              .append(")");
+        return result.toString();
+>>>>>>> cac187d8c579f2005d9a5234af50696a503a00df
     }
 }
