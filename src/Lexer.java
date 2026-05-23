@@ -1,110 +1,140 @@
 public class Lexer {
-    private final String input;
-    private int pos = 0;
-    private int line = 1;
 
-    public Lexer(String input) {
-        this.input = input;
+    private final String source;
+    private int current;
+    private int lineNumber;
+
+    public Lexer(String source) {
+        this.source     = source;
+        this.current    = 0;
+        this.lineNumber = 1;
     }
 
-    public int getLine() { return line; }
+    public int getLine() {
+        return lineNumber;
+    }
 
     public Token nextToken() {
-        // Skip whitespace
-        while (pos < input.length() && Character.isWhitespace(input.charAt(pos))) {
-            if (input.charAt(pos) == '\n') line++;
-            pos++;
-        }
+        skipWhitespaceAndComments();
 
-        if (pos >= input.length()) {
+        if (isAtEnd()) {
             return new Token(Token.Type.EOF, "");
         }
 
-        char current = input.charAt(pos);
+        char ch = peek();
 
-        // Skip single-line comments: // ...
-        if (current == '/' && pos + 1 < input.length() && input.charAt(pos + 1) == '/') {
-            while (pos < input.length() && input.charAt(pos) != '\n') pos++;
-            return nextToken();
-        }
+        if (isBanglaDigit(ch))     return readBanglaNumber();
+        if (Character.isDigit(ch)) return readAsciiNumber();
+        if (isBanglaLetter(ch))    return readWordOrKeyword();
+        if (ch == '"')             return readStringLiteral();
 
-        // Bangla digits → NUMBER token
-        if (isBanglaDigit(current)) {
-            StringBuilder sb = new StringBuilder();
-            while (pos < input.length() && (isBanglaDigit(input.charAt(pos)) || input.charAt(pos) == '.')) {
-                sb.append(input.charAt(pos++));
+        return readOperatorOrDelimiter();
+    }
+
+    private void skipWhitespaceAndComments() {
+        while (!isAtEnd()) {
+            char ch = peek();
+            if (ch == '\n') {
+                lineNumber++;
+                current++;
+            } else if (Character.isWhitespace(ch)) {
+                current++;
+            } else if (ch == '/' && peekNext() == '/') {
+                while (!isAtEnd() && peek() != '\n') current++;
+            } else {
+                break;
             }
-            return new Token(Token.Type.NUMBER, sb.toString());
         }
+    }
 
-        // ASCII digits → NUMBER token (for convenience)
-        if (Character.isDigit(current)) {
-            StringBuilder sb = new StringBuilder();
-            while (pos < input.length() && (Character.isDigit(input.charAt(pos)) || input.charAt(pos) == '.')) {
-                sb.append(input.charAt(pos++));
-            }
-            return new Token(Token.Type.NUMBER, sb.toString());
+    private Token readBanglaNumber() {
+        StringBuilder number = new StringBuilder();
+        while (!isAtEnd() && (isBanglaDigit(peek()) || peek() == '.')) {
+            number.append(advance());
         }
+        return new Token(Token.Type.NUMBER, number.toString());
+    }
 
-        if (isBanglaLetter(current)) {
-            StringBuilder sb = new StringBuilder();
-            while (pos < input.length() &&
-                   (isBanglaLetter(input.charAt(pos)) || isBanglaDigit(input.charAt(pos)))) {
-                sb.append(input.charAt(pos++));
-            }
-            String word = sb.toString();
-            return switch (word) {
-                case "যদি"     -> new Token(Token.Type.IF,    word);
-                case "নাহলে"  -> new Token(Token.Type.ELSE,  word);
-                case "যতক্ষণ" -> new Token(Token.Type.WHILE, word);
-                case "দেখাও"  -> new Token(Token.Type.PRINT, word);
-                case "সত্য"   -> new Token(Token.Type.TRUE,  word);
-                case "মিথ্যা" -> new Token(Token.Type.FALSE, word);
-                default        -> new Token(Token.Type.IDENTIFIER, word);
-            };
+    private Token readAsciiNumber() {
+        StringBuilder number = new StringBuilder();
+        while (!isAtEnd() && (Character.isDigit(peek()) || peek() == '.')) {
+            number.append(advance());
         }
+        return new Token(Token.Type.NUMBER, number.toString());
+    }
 
-        if (current == '"') {
-            pos++; // skip opening quote
-            StringBuilder sb = new StringBuilder();
-            while (pos < input.length() && input.charAt(pos) != '"') {
-                if (input.charAt(pos) == '\n') line++;
-                sb.append(input.charAt(pos++));
-            }
-            if (pos < input.length()) pos++; // skip closing quote
-            return new Token(Token.Type.STRING, sb.toString());
+    private Token readWordOrKeyword() {
+        StringBuilder word = new StringBuilder();
+        while (!isAtEnd() && (isBanglaLetter(peek()) || isBanglaDigit(peek()))) {
+            word.append(advance());
         }
+        String text = word.toString();
+        return new Token(matchKeyword(text), text);
+    }
 
-        pos++;
-
-        if (current == '=' && pos < input.length() && input.charAt(pos) == '=') {
-            pos++; return new Token(Token.Type.EQ,  "==");
-        }
-        if (current == '!' && pos < input.length() && input.charAt(pos) == '=') {
-            pos++; return new Token(Token.Type.NEQ, "!=");
-        }
-        if (current == '<' && pos < input.length() && input.charAt(pos) == '=') {
-            pos++; return new Token(Token.Type.LTE, "<=");
-        }
-        if (current == '>' && pos < input.length() && input.charAt(pos) == '=') {
-            pos++; return new Token(Token.Type.GTE, ">=");
-        }
-
-        return switch (current) {
-            case '='  -> new Token(Token.Type.ASSIGN,    "=");
-            case '+'  -> new Token(Token.Type.PLUS,      "+");
-            case '-'  -> new Token(Token.Type.MINUS,     "-");
-            case '*'  -> new Token(Token.Type.MULTIPLY,  "*");
-            case '/'  -> new Token(Token.Type.DIVIDE,    "/");
-            case '<'  -> new Token(Token.Type.LT,        "<");
-            case '>'  -> new Token(Token.Type.GT,        ">");
-            case ';'  -> new Token(Token.Type.SEMICOLON, ";");
-            case '('  -> new Token(Token.Type.LPAREN,    "(");
-            case ')'  -> new Token(Token.Type.RPAREN,    ")");
-            case '{'  -> new Token(Token.Type.LBRACE,    "{");
-            case '}'  -> new Token(Token.Type.RBRACE,    "}");
-            default   -> new Token(Token.Type.UNKNOWN,   String.valueOf(current));
+    private Token.Type matchKeyword(String word) {
+        return switch (word) {
+            case "যদি"     -> Token.Type.IF;
+            case "নাহলে"  -> Token.Type.ELSE;
+            case "যতক্ষণ" -> Token.Type.WHILE;
+            case "দেখাও"  -> Token.Type.PRINT;
+            case "সত্য"   -> Token.Type.TRUE;
+            case "মিথ্যা" -> Token.Type.FALSE;
+            default        -> Token.Type.IDENTIFIER;
         };
+    }
+
+    private Token readStringLiteral() {
+        advance();
+        StringBuilder content = new StringBuilder();
+        while (!isAtEnd() && peek() != '"') {
+            if (peek() == '\n') lineNumber++;
+            content.append(advance());
+        }
+        if (!isAtEnd()) advance();
+        return new Token(Token.Type.STRING, content.toString());
+    }
+
+    private Token readOperatorOrDelimiter() {
+        char ch = advance();
+
+        if (ch == '=' && peek() == '=') { advance(); return new Token(Token.Type.EQ,  "=="); }
+        if (ch == '!' && peek() == '=') { advance(); return new Token(Token.Type.NEQ, "!="); }
+        if (ch == '<' && peek() == '=') { advance(); return new Token(Token.Type.LTE, "<="); }
+        if (ch == '>' && peek() == '=') { advance(); return new Token(Token.Type.GTE, ">="); }
+
+        return switch (ch) {
+            case '=' -> new Token(Token.Type.ASSIGN,    "=");
+            case '+' -> new Token(Token.Type.PLUS,      "+");
+            case '-' -> new Token(Token.Type.MINUS,     "-");
+            case '*' -> new Token(Token.Type.MULTIPLY,  "*");
+            case '/' -> new Token(Token.Type.DIVIDE,    "/");
+            case '<' -> new Token(Token.Type.LT,        "<");
+            case '>' -> new Token(Token.Type.GT,        ">");
+            case ';' -> new Token(Token.Type.SEMICOLON, ";");
+            case '(' -> new Token(Token.Type.LPAREN,    "(");
+            case ')' -> new Token(Token.Type.RPAREN,    ")");
+            case '{' -> new Token(Token.Type.LBRACE,    "{");
+            case '}' -> new Token(Token.Type.RBRACE,    "}");
+            default  -> new Token(Token.Type.UNKNOWN,   String.valueOf(ch));
+        };
+    }
+
+    private char peek() {
+        return source.charAt(current);
+    }
+
+    private char peekNext() {
+        if (current + 1 >= source.length()) return '\0';
+        return source.charAt(current + 1);
+    }
+
+    private char advance() {
+        return source.charAt(current++);
+    }
+
+    private boolean isAtEnd() {
+        return current >= source.length();
     }
 
     private boolean isBanglaLetter(char c) {
