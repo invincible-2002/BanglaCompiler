@@ -1,0 +1,1 @@
+A simple Bangla compiler project built with Python that processes Bangla code and translates it into executable instructions. The project explores basic compiler concepts such as lexical analysis, parsing, and code generation.
